@@ -31,5 +31,12 @@ MODEL_NAME = "meta-llama/llama-4-scout-17b-16e-instruct"
 MAX_IMAGES = 30
 DELAY_SECONDS = 3
 
+# Default Groq on-demand limits used for the UI usage monitor. Keeping them in
+# config makes the dashboard easy to update if account limits change.
+RPM_LIMIT = 30
+RPD_LIMIT = 1000
+TPM_LIMIT = 30000
+TPD_LIMIT = 500000
+
 DEFAULT_PDF_NAME = "VisionIQ_Extracted_Questions"
 PDF_THEMES = ["Light", "Dark"]

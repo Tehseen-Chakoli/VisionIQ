@@ -11,11 +11,14 @@ import streamlit as st
 from src.auth import init_auth_state
 from src.components import (
     apply_global_styles,
+    render_app_header,
     render_hero,
     render_login_page,
     render_pipeline_notice,
     render_profile_menu,
     render_section_card,
+    render_usage_dashboard,
+    render_batch_summary_panel,
 )
 from src.config import APP_NAME, GROQ_KEYS_URL, MAX_IMAGES
 from src.database import get_groq_key, init_db, save_groq_key
@@ -31,6 +34,13 @@ def initialize_session_state() -> None:
         st.session_state.upload_widget_key = 0
     if "queued_file_names" not in st.session_state:
         st.session_state.queued_file_names = []
+    if "session_usage" not in st.session_state:
+        st.session_state.session_usage = {
+            "requests_last_minute": 0,
+            "tokens_last_minute": 0,
+            "session_requests": 0,
+            "tokens_today": 0,
+        }
 
 
 def run_app() -> None:
@@ -59,7 +69,7 @@ def run_app() -> None:
 
 
 def load_or_request_groq_key(username: str) -> str | None:
-    """Load a saved Groq key or render the key setup screen.
+    """Load a saved model API key or render the key setup screen.
 
     A return value of ``None`` means the key is missing or unavailable, so the
     caller should stop rendering the authenticated workspace.
@@ -81,26 +91,26 @@ def load_or_request_groq_key(username: str) -> str | None:
 
 
 def render_api_key_setup(username: str) -> None:
-    """Render the one-time Groq API key setup form for authenticated users."""
+    """Render the one-time API key setup form for authenticated users."""
 
     render_hero()
     render_section_card(
-        "Connect Groq API Access",
-        "Save your Groq API key once to enable secure document extraction for this account.",
+        "Connect Model Access",
+        "Save your API key once to enable secure document extraction for this account.",
     )
 
     st.link_button("Open Groq API Keys", GROQ_KEYS_URL, use_container_width=True)
 
     with st.form("save_groq_key_form"):
-        user_key = st.text_input("Groq API Key", type="password", placeholder="gsk_...")
+        user_key = st.text_input("API Key", type="password", placeholder="gsk_...")
         submitted = st.form_submit_button("Save API Key", use_container_width=True)
 
     if submitted:
         if not user_key.strip():
-            st.error("Enter your Groq API key before saving.")
+            st.error("Enter your API key before saving.")
         else:
             save_groq_key(username, encrypt(user_key.strip()))
-            st.success("Groq API key saved. Loading your workspace...")
+            st.success("API key saved. Loading your workspace...")
             st.rerun()
 
     st.caption("Your key is encrypted before storage and used only for requests you initiate.")
@@ -109,21 +119,50 @@ def render_api_key_setup(username: str) -> None:
 def render_workspace(username: str, groq_api_key: str) -> None:
     """Render the authenticated VisionIQ workspace shell."""
 
-    header_col, profile_col = st.columns([5.3, 1.0], gap="large", vertical_alignment="top")
+    upload_key = get_upload_widget_key()
+    queued_count = get_current_upload_count(upload_key)
+    header_col, profile_col = st.columns([5.0, 1.0], gap="medium", vertical_alignment="top")
 
     with header_col:
-        render_hero()
+        render_app_header(username)
 
     with profile_col:
-        # A small spacer aligns the popover with the visual height of the hero.
-        st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
         render_profile_menu(username)
 
-    render_upload_shell(groq_api_key=groq_api_key)
+    render_usage_dashboard(session_usage=st.session_state.session_usage)
+
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+    upload_col, status_col = st.columns([1.65, 1.0], gap="large", vertical_alignment="top")
+
+    with upload_col:
+        render_upload_shell(groq_api_key=groq_api_key, upload_key=upload_key)
+
+    with status_col:
+        render_batch_summary_panel(
+            username=username,
+            queued_count=queued_count,
+            queued_file_names=st.session_state.queued_file_names,
+        )
+
     render_pipeline_notice()
 
 
-def render_upload_shell(groq_api_key: str) -> None:
+def get_upload_widget_key() -> str:
+    """Return the stable uploader key for the current widget generation."""
+
+    return f"uploaded_images_{st.session_state.upload_widget_key}"
+
+
+def get_current_upload_count(upload_key: str) -> int:
+    """Read the current uploader state before the upload widget is rendered."""
+
+    uploaded_files = st.session_state.get(upload_key, [])
+    if uploaded_files:
+        return len(uploaded_files)
+    return len(st.session_state.queued_file_names)
+
+
+def render_upload_shell(groq_api_key: str, upload_key: str) -> None:
     """Render upload controls for the workspace shell.
 
     The current workspace queues files only. Processing modules will later
@@ -139,7 +178,7 @@ def render_upload_shell(groq_api_key: str) -> None:
         "Select PNG or JPEG images",
         type=["png", "jpg", "jpeg"],
         accept_multiple_files=True,
-        key=f"uploaded_images_{st.session_state.upload_widget_key}",
+        key=upload_key,
     )
 
     uploaded_count = len(uploaded_files) if uploaded_files else 0
@@ -149,7 +188,15 @@ def render_upload_shell(groq_api_key: str) -> None:
         st.session_state.queued_file_names = [uploaded_file.name for uploaded_file in uploaded_files]
         st.success(f"{uploaded_count} image(s) queued for extraction.")
 
-    action_col, clear_col, _ = st.columns([1.1, 1.0, 3.0], gap="large")
+    st.markdown(
+        """
+<div class="vi-action-strip">
+    <div class="vi-action-copy">Files are staged locally until extraction modules are connected.</div>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    action_col, clear_col, _ = st.columns([1.0, 0.9, 2.8], gap="medium")
     with action_col:
         if st.button("Start Extraction", type="primary", use_container_width=True):
             st.info("Extraction is not connected yet. The processing pipeline will be added as dedicated modules.")
