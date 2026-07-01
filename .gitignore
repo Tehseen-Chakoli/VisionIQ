@@ -1,0 +1,26 @@
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+
+# Local environment and Streamlit secrets
+.env
+.streamlit/secrets.toml
+
+# Local application data
+data/
+*.db
+
+# Generated files
+*.tmp
+*.log
+*.pdf
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
