@@ -13,7 +13,7 @@ import os
 import sqlite3
 import time
 from contextlib import closing
-from typing import Any
+from typing import Any, Mapping, Sequence
 
 from src.config import DB_PATH
 
@@ -110,6 +110,46 @@ def init_db() -> None:
                 model TEXT,
                 status TEXT DEFAULT 'success',
                 error_message TEXT DEFAULT ''
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS extraction_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL,
+                job_name TEXT NOT NULL,
+                source_count INTEGER DEFAULT 0,
+                success_count INTEGER DEFAULT 0,
+                error_count INTEGER DEFAULT 0,
+                total_tokens INTEGER DEFAULT 0,
+                model TEXT DEFAULT ''
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS extraction_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id INTEGER NOT NULL,
+                image_number INTEGER,
+                file_name TEXT,
+                output TEXT DEFAULT '',
+                status TEXT DEFAULT 'success',
+                prompt_tokens INTEGER DEFAULT 0,
+                completion_tokens INTEGER DEFAULT 0,
+                total_tokens INTEGER DEFAULT 0,
+                duration_seconds REAL DEFAULT 0,
+                model TEXT DEFAULT '',
+                error_message TEXT DEFAULT '',
+                was_cropped INTEGER DEFAULT 0,
+                original_width INTEGER DEFAULT 0,
+                original_height INTEGER DEFAULT 0,
+                final_width INTEGER DEFAULT 0,
+                final_height INTEGER DEFAULT 0,
+                FOREIGN KEY(job_id) REFERENCES extraction_jobs(id) ON DELETE CASCADE
             )
             """
         )
@@ -245,4 +285,252 @@ def get_user_token_summary(username: str) -> dict[str, Any]:
         "prompt_tokens": int(row[2] or 0),
         "completion_tokens": int(row[3] or 0),
         "total_tokens": int(row[4] or 0),
+    }
+
+
+def _coerce_size_pair(value: object) -> tuple[int, int]:
+    """Normalize stored image size values into a predictable integer pair."""
+
+    if isinstance(value, (list, tuple)) and len(value) >= 2:
+        return int(value[0] or 0), int(value[1] or 0)
+    return 0, 0
+
+
+def _summarize_results(results: Sequence[Mapping[str, object]]) -> dict[str, int | str]:
+    """Build batch summary values stored on the extraction job row."""
+
+    normalized_results = list(results)
+    success_count = sum(1 for result in normalized_results if str(result.get("status", "success")) == "success")
+    error_count = sum(1 for result in normalized_results if str(result.get("status", "success")) != "success")
+    total_tokens = sum(int(result.get("total_tokens", 0) or 0) for result in normalized_results)
+    model_names = [str(result.get("model", "")).strip() for result in normalized_results if str(result.get("model", "")).strip()]
+    return {
+        "source_count": len(normalized_results),
+        "success_count": success_count,
+        "error_count": error_count,
+        "total_tokens": total_tokens,
+        "model": model_names[0] if model_names else "",
+    }
+
+
+def create_extraction_job(
+    *,
+    username: str,
+    job_name: str,
+    results: Sequence[Mapping[str, object]],
+) -> int:
+    """Persist a newly completed extraction batch and return its job id."""
+
+    now = time.time()
+    summary = _summarize_results(results)
+    clean_username = _normalize_username(username)
+    clean_job_name = (job_name or "Untitled Batch").strip() or "Untitled Batch"
+
+    with closing(get_connection()) as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO extraction_jobs (
+                username, created_at, updated_at, job_name,
+                source_count, success_count, error_count, total_tokens, model
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                clean_username,
+                now,
+                now,
+                clean_job_name,
+                summary["source_count"],
+                summary["success_count"],
+                summary["error_count"],
+                summary["total_tokens"],
+                summary["model"],
+            ),
+        )
+        job_id = int(cursor.lastrowid)
+        _replace_extraction_items(conn, job_id, results)
+        conn.commit()
+    return job_id
+
+
+def update_extraction_job(
+    *,
+    job_id: int,
+    username: str,
+    results: Sequence[Mapping[str, object]],
+    job_name: str | None = None,
+) -> None:
+    """Replace the stored job results after the user edits a batch review."""
+
+    now = time.time()
+    summary = _summarize_results(results)
+    clean_username = _normalize_username(username)
+
+    with closing(get_connection()) as conn:
+        existing = conn.execute(
+            "SELECT job_name FROM extraction_jobs WHERE id=? AND username=?",
+            (int(job_id), clean_username),
+        ).fetchone()
+        if not existing:
+            return
+
+        final_job_name = (job_name or str(existing[0] or "")).strip() or "Untitled Batch"
+        conn.execute(
+            """
+            UPDATE extraction_jobs
+            SET updated_at=?, job_name=?, source_count=?, success_count=?,
+                error_count=?, total_tokens=?, model=?
+            WHERE id=? AND username=?
+            """,
+            (
+                now,
+                final_job_name,
+                summary["source_count"],
+                summary["success_count"],
+                summary["error_count"],
+                summary["total_tokens"],
+                summary["model"],
+                int(job_id),
+                clean_username,
+            ),
+        )
+        _replace_extraction_items(conn, int(job_id), results)
+        conn.commit()
+
+
+def _replace_extraction_items(
+    conn: sqlite3.Connection,
+    job_id: int,
+    results: Sequence[Mapping[str, object]],
+) -> None:
+    """Rewrite all child rows for one extraction job."""
+
+    conn.execute("DELETE FROM extraction_items WHERE job_id=?", (int(job_id),))
+    for result in results:
+        original_width, original_height = _coerce_size_pair(result.get("original_size"))
+        final_width, final_height = _coerce_size_pair(result.get("final_size"))
+        conn.execute(
+            """
+            INSERT INTO extraction_items (
+                job_id, image_number, file_name, output, status,
+                prompt_tokens, completion_tokens, total_tokens, duration_seconds,
+                model, error_message, was_cropped, original_width,
+                original_height, final_width, final_height
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                int(job_id),
+                int(result.get("image_number", 0) or 0),
+                str(result.get("file_name", "") or ""),
+                str(result.get("output", "") or ""),
+                str(result.get("status", "success") or "success"),
+                int(result.get("prompt_tokens", 0) or 0),
+                int(result.get("completion_tokens", 0) or 0),
+                int(result.get("total_tokens", 0) or 0),
+                float(result.get("duration_seconds", 0) or 0),
+                str(result.get("model", "") or ""),
+                str(result.get("error_message", "") or ""),
+                1 if bool(result.get("was_cropped", False)) else 0,
+                original_width,
+                original_height,
+                final_width,
+                final_height,
+            ),
+        )
+
+
+def list_extraction_jobs(username: str, limit: int = 12) -> list[dict[str, Any]]:
+    """Return the most recent saved extraction batches for one account."""
+
+    with closing(get_connection()) as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                id, job_name, created_at, updated_at, source_count,
+                success_count, error_count, total_tokens, model
+            FROM extraction_jobs
+            WHERE username=?
+            ORDER BY updated_at DESC, id DESC
+            LIMIT ?
+            """,
+            (_normalize_username(username), int(limit)),
+        ).fetchall()
+
+    return [
+        {
+            "id": int(row[0]),
+            "job_name": str(row[1] or ""),
+            "created_at": float(row[2] or 0),
+            "updated_at": float(row[3] or 0),
+            "source_count": int(row[4] or 0),
+            "success_count": int(row[5] or 0),
+            "error_count": int(row[6] or 0),
+            "total_tokens": int(row[7] or 0),
+            "model": str(row[8] or ""),
+        }
+        for row in rows
+    ]
+
+
+def get_extraction_job(job_id: int, username: str) -> dict[str, Any] | None:
+    """Load one saved extraction batch and all of its reviewed items."""
+
+    clean_username = _normalize_username(username)
+    with closing(get_connection()) as conn:
+        job_row = conn.execute(
+            """
+            SELECT
+                id, job_name, created_at, updated_at, source_count,
+                success_count, error_count, total_tokens, model
+            FROM extraction_jobs
+            WHERE id=? AND username=?
+            """,
+            (int(job_id), clean_username),
+        ).fetchone()
+        if not job_row:
+            return None
+
+        item_rows = conn.execute(
+            """
+            SELECT
+                image_number, file_name, output, status, prompt_tokens,
+                completion_tokens, total_tokens, duration_seconds, model,
+                error_message, was_cropped, original_width, original_height,
+                final_width, final_height
+            FROM extraction_items
+            WHERE job_id=?
+            ORDER BY image_number ASC, id ASC
+            """,
+            (int(job_id),),
+        ).fetchall()
+
+    return {
+        "id": int(job_row[0]),
+        "job_name": str(job_row[1] or ""),
+        "created_at": float(job_row[2] or 0),
+        "updated_at": float(job_row[3] or 0),
+        "source_count": int(job_row[4] or 0),
+        "success_count": int(job_row[5] or 0),
+        "error_count": int(job_row[6] or 0),
+        "total_tokens": int(job_row[7] or 0),
+        "model": str(job_row[8] or ""),
+        "results": [
+            {
+                "image_number": int(row[0] or 0),
+                "file_name": str(row[1] or ""),
+                "output": str(row[2] or ""),
+                "status": str(row[3] or "success"),
+                "prompt_tokens": int(row[4] or 0),
+                "completion_tokens": int(row[5] or 0),
+                "total_tokens": int(row[6] or 0),
+                "duration_seconds": float(row[7] or 0),
+                "model": str(row[8] or ""),
+                "error_message": str(row[9] or ""),
+                "was_cropped": bool(row[10]),
+                "original_size": (int(row[11] or 0), int(row[12] or 0)),
+                "final_size": (int(row[13] or 0), int(row[14] or 0)),
+            }
+            for row in item_rows
+        ],
     }

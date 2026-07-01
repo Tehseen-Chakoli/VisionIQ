@@ -26,12 +26,9 @@ def _build_styles(theme: str) -> dict[str, ParagraphStyle]:
 
     base_styles = getSampleStyleSheet()
     dark_theme = (theme or "").strip().lower() == "dark"
-    # Keep body text dark because the current export uses standard white PDF
-    # pages. The theme changes accent and metadata treatment without reducing
-    # readability for printing or sharing.
-    body_color = colors.HexColor("#213040")
-    muted_color = colors.HexColor("#4f6278") if dark_theme else colors.HexColor("#66758a")
-    accent_color = colors.HexColor("#7fc7b8") if dark_theme else colors.HexColor("#315b8f")
+    body_color = colors.HexColor("#d8e6e1") if dark_theme else colors.HexColor("#213040")
+    muted_color = colors.HexColor("#9eb5b0") if dark_theme else colors.HexColor("#66758a")
+    accent_color = colors.HexColor("#8ed9cd") if dark_theme else colors.HexColor("#315b8f")
 
     return {
         "title": ParagraphStyle(
@@ -74,6 +71,21 @@ def _build_styles(theme: str) -> dict[str, ParagraphStyle]:
     }
 
 
+def _draw_page_background(canvas, doc, theme: str) -> None:
+    """Draw the page background and footer accents for themed exports."""
+
+    dark_theme = (theme or "").strip().lower() == "dark"
+    if not dark_theme:
+        return
+
+    canvas.saveState()
+    canvas.setFillColor(colors.HexColor("#000000"))
+    canvas.rect(0, 0, doc.pagesize[0], doc.pagesize[1], fill=1, stroke=0)
+    canvas.setFillColor(colors.HexColor("#10181a"))
+    canvas.rect(doc.leftMargin, doc.pagesize[1] - 18, doc.width, 3, fill=1, stroke=0)
+    canvas.restoreState()
+
+
 def create_extraction_pdf(
     *,
     results: Sequence[Mapping[str, object]],
@@ -112,5 +124,9 @@ def create_extraction_pdf(
         if index < len(results):
             story.append(PageBreak())
 
-    doc.build(story)
+    doc.build(
+        story,
+        onFirstPage=lambda canvas, current_doc: _draw_page_background(canvas, current_doc, theme),
+        onLaterPages=lambda canvas, current_doc: _draw_page_background(canvas, current_doc, theme),
+    )
     return final_path

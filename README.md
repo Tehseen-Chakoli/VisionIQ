@@ -20,6 +20,9 @@ VisionIQ is currently under active development. The current build includes authe
 - JPEG optimization before model requests
 - Batch extraction orchestration
 - Editable extraction review area
+- Persistent saved extraction batches
+- Extraction history with reopen support
+- Save reviewed edits back to batch history
 - Light and dark PDF export
 
 ## Interface
@@ -89,13 +92,12 @@ The current extraction flow is intentionally modular:
 2. Prepare each image with conservative crop detection and JPEG optimization.
 3. Send the prepared image to the configured Groq Vision model.
 4. Record successful and failed request usage locally.
-5. Review and edit extracted text in the workspace.
-6. Export reviewed successful results to PDF.
+5. Save each completed batch into local extraction history.
+6. Review and edit extracted text in the workspace.
+7. Reopen saved batches and export reviewed successful results to PDF.
 
 ## Planned Improvements
 
-- Persist named extraction jobs
-- Add extraction history and re-export
 - Add optional prompt profiles
 - Add automated tests for image preparation and PDF export
 
