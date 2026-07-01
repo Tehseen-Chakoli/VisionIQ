@@ -22,8 +22,11 @@ def apply_global_styles() -> None:
 <style>
 .stApp {
     background:
-        linear-gradient(180deg, #f7f8fb 0%, #eef2f7 100%) !important;
-    color: #1f2937 !important;
+        radial-gradient(circle at 8% 8%, rgba(49, 91, 143, 0.18), transparent 26%),
+        radial-gradient(circle at 88% 14%, rgba(63, 143, 131, 0.18), transparent 28%),
+        radial-gradient(circle at 50% 92%, rgba(147, 119, 84, 0.10), transparent 32%),
+        linear-gradient(135deg, #e8eef4 0%, #f6f3ed 46%, #e7f1ef 100%) !important;
+    color: #213040 !important;
 }
 header, footer {visibility: hidden;}
 [data-testid="stSidebar"] {display: none !important;}
@@ -33,14 +36,14 @@ header, footer {visibility: hidden;}
     padding-bottom: 3rem !important;
 }
 h1, h2, h3, h4, h5, h6, p, span, label, div {
-    color: #1f2937;
+    color: #213040;
 }
-a { color: #2563eb !important; }
+a { color: #315b8f !important; }
 .vi-hero {
-    border: 1px solid #d9dee7;
+    border: 1px solid #cfd8e3;
     border-radius: 8px;
-    background: #ffffff;
-    box-shadow: 0 12px 28px rgba(31, 41, 55, 0.07);
+    background: #f8fafc;
+    box-shadow: 0 12px 28px rgba(33, 48, 64, 0.08);
     padding: 24px 26px 20px 26px;
     margin-bottom: 18px;
 }
@@ -49,10 +52,12 @@ a { color: #2563eb !important; }
     align-items: center;
     justify-content: space-between;
     gap: 18px;
-    border: 1px solid #d9dee7;
+    border: 1px solid #cfd8e3;
     border-radius: 8px;
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    box-shadow: 0 10px 24px rgba(31, 41, 55, 0.06);
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(241, 247, 250, 0.95) 100%),
+        linear-gradient(90deg, rgba(49, 91, 143, 0.08), rgba(63, 143, 131, 0.08));
+    box-shadow: 0 10px 24px rgba(33, 48, 64, 0.07);
     padding: 18px 20px;
     margin-bottom: 16px;
     animation: vi-rise 360ms ease-out both;
@@ -66,7 +71,7 @@ a { color: #2563eb !important; }
     width: 42px;
     height: 42px;
     border-radius: 8px;
-    background: linear-gradient(135deg, #1f2937, #2563eb);
+    background: linear-gradient(135deg, #213040, #315b8f);
     color: #ffffff !important;
     display: flex;
     align-items: center;
@@ -75,35 +80,35 @@ a { color: #2563eb !important; }
     letter-spacing: 0;
 }
 .vi-brand-name {
-    color: #111827 !important;
+    color: #172233 !important;
     font-size: 24px;
     font-weight: 850;
     line-height: 1.05;
     letter-spacing: 0;
 }
 .vi-brand-subtitle {
-    color: #5b6472 !important;
+    color: #66758a !important;
     font-size: 13px;
     font-weight: 650;
     margin-top: 3px;
 }
 .vi-topbar-meta {
     text-align: right;
-    color: #6b7280 !important;
+    color: #6b7a8f !important;
     font-size: 12px;
     font-weight: 650;
 }
 .vi-account-card {
-    border: 1px solid #d9dee7;
+    border: 1px solid #cfd8e3;
     border-radius: 8px;
-    background: #ffffff;
-    box-shadow: 0 10px 24px rgba(31, 41, 55, 0.05);
+    background: #f8fafc;
+    box-shadow: 0 10px 24px rgba(33, 48, 64, 0.055);
     padding: 12px;
     min-height: 96px;
     animation: vi-rise 420ms ease-out both;
 }
 .vi-account-label {
-    color: #6b7280 !important;
+    color: #6b7a8f !important;
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.02em;
@@ -111,7 +116,7 @@ a { color: #2563eb !important; }
     margin-bottom: 6px;
 }
 .vi-account-email {
-    color: #111827 !important;
+    color: #172233 !important;
     font-size: 12px;
     font-weight: 700;
     line-height: 1.35;
@@ -119,7 +124,7 @@ a { color: #2563eb !important; }
     margin-bottom: 8px;
 }
 .vi-title {
-    color: #111827 !important;
+    color: #172233 !important;
     text-align: left;
     font-size: 38px;
     font-weight: 850;
@@ -129,7 +134,7 @@ a { color: #2563eb !important; }
 }
 .vi-subtitle {
     text-align: left;
-    color: #5b6472 !important;
+    color: #66758a !important;
     font-weight: 650;
     margin-top: 8px;
     font-size: 14px;
@@ -138,83 +143,119 @@ a { color: #2563eb !important; }
     height: 3px;
     width: 84px;
     margin: 18px 0 0 0;
-    background: linear-gradient(90deg, #2563eb, #14b8a6);
+    background: linear-gradient(90deg, #315b8f, #3f8f83);
     border-radius: 999px;
 }
 .vi-card {
-    border: 1px solid #d9dee7;
+    border: 1px solid #cfd8e3;
     border-radius: 8px;
-    background: #ffffff;
-    box-shadow: 0 8px 20px rgba(31, 41, 55, 0.055);
+    background:
+        linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(242, 247, 249, 0.98)),
+        linear-gradient(90deg, rgba(49, 91, 143, 0.06), rgba(63, 143, 131, 0.06));
+    box-shadow: 0 8px 20px rgba(33, 48, 64, 0.06);
     padding: 20px;
     margin-bottom: 16px;
     animation: vi-rise 440ms ease-out both;
 }
+.vi-card::before {
+    content: "";
+    display: block;
+    width: 72px;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #315b8f, #3f8f83, #b18b5e);
+    margin-bottom: 14px;
+}
 .vi-panel {
-    border: 1px solid #d9dee7;
+    border: 1px solid #cfd8e3;
     border-radius: 8px;
-    background: #ffffff;
-    box-shadow: 0 8px 20px rgba(31, 41, 55, 0.055);
+    background:
+        linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(240, 247, 245, 0.98)),
+        linear-gradient(135deg, rgba(63, 143, 131, 0.08), rgba(49, 91, 143, 0.04));
+    box-shadow: 0 8px 20px rgba(33, 48, 64, 0.06);
     padding: 18px;
     min-height: 100%;
     animation: vi-rise 480ms ease-out both;
 }
 .vi-section-title {
-    color: #111827 !important;
+    color: #172233 !important;
     font-size: 22px;
     font-weight: 800;
     margin: 0 0 10px 0;
 }
 .vi-caption {
-    color: #5b6472 !important;
+    color: #66758a !important;
     font-size: 13px;
     line-height: 1.6;
 }
 .vi-kpi {
-    border: 1px solid #d9dee7;
+    border: 1px solid #cfd8e3;
     border-radius: 8px;
-    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
-    box-shadow: 0 8px 18px rgba(31, 41, 55, 0.045);
+    background:
+        linear-gradient(180deg, #fbfcfe 0%, #f2f6f9 100%),
+        linear-gradient(135deg, rgba(49, 91, 143, 0.08), rgba(63, 143, 131, 0.06));
+    box-shadow: 0 8px 18px rgba(33, 48, 64, 0.055);
     padding: 14px 15px;
     min-height: 92px;
     transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
     animation: vi-rise 420ms ease-out both;
 }
+.vi-kpi:nth-child(1) {
+    border-top: 3px solid #315b8f;
+}
 .vi-kpi:hover {
-    border-color: #bfdbfe;
-    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.08);
+    border-color: #abc4dc;
+    box-shadow: 0 12px 24px rgba(49, 91, 143, 0.10);
     transform: translateY(-1px);
 }
 .vi-kpi-label {
-    color: #6b7280 !important;
+    color: #6b7a8f !important;
     font-size: 12px;
     font-weight: 750;
     margin-bottom: 8px;
 }
+.vi-kpi::before {
+    content: "";
+    display: block;
+    width: 32px;
+    height: 3px;
+    border-radius: 999px;
+    background: #315b8f;
+    margin-bottom: 10px;
+}
+.stColumn:nth-of-type(2) .vi-kpi::before {
+    background: #3f8f83;
+}
+.stColumn:nth-of-type(3) .vi-kpi::before {
+    background: #8b5cf6;
+}
+.stColumn:nth-of-type(4) .vi-kpi::before {
+    background: #b18b5e;
+}
 .vi-kpi-value {
-    color: #111827 !important;
+    color: #172233 !important;
     font-size: 22px;
     font-weight: 850;
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
 }
 .vi-kpi-value-small {
-    color: #111827 !important;
+    color: #172233 !important;
     font-size: 18px;
     font-weight: 850;
     line-height: 1.18;
     font-variant-numeric: tabular-nums;
 }
 .vi-kpi-note {
-    color: #6b7280 !important;
+    color: #6b7a8f !important;
     font-size: 11px;
     margin-top: 7px;
 }
 .vi-kpi-remaining {
     display: inline-block;
-    color: #0f766e !important;
-    background: #ecfdf5;
-    border: 1px solid #bbf7d0;
+    color: #35685f !important;
+    background: #e8f3f0;
+    border: 1px solid #b8d8d0;
     border-radius: 999px;
     padding: 2px 8px;
     font-size: 11px;
@@ -226,14 +267,16 @@ a { color: #2563eb !important; }
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    border: 1px solid #d9dee7;
+    border: 1px solid #cfd8e3;
     border-radius: 8px;
-    background: #ffffff;
+    background:
+        linear-gradient(90deg, rgba(49, 91, 143, 0.08), rgba(63, 143, 131, 0.09)),
+        #f3f7f8;
     padding: 12px;
     margin-top: 12px;
 }
 .vi-action-copy {
-    color: #5b6472 !important;
+    color: #66758a !important;
     font-size: 12px;
     line-height: 1.45;
 }
@@ -246,82 +289,96 @@ a { color: #2563eb !important; }
     justify-content: space-between;
     gap: 12px;
     padding: 10px 0;
-    border-bottom: 1px solid #eef2f7;
+    border-bottom: 1px solid #e1e8ef;
+}
+.vi-batch-row:nth-child(3) .vi-batch-value {
+    color: #315b8f !important;
+}
+.vi-batch-row:nth-child(4) .vi-batch-value {
+    color: #3f8f83 !important;
+}
+.vi-batch-row:nth-child(5) .vi-batch-value {
+    color: #8b5cf6 !important;
+}
+.vi-batch-row:nth-child(6) .vi-batch-value {
+    color: #b18b5e !important;
 }
 .vi-batch-row:last-child {
     border-bottom: 0;
 }
 .vi-batch-label {
-    color: #6b7280 !important;
+    color: #6b7a8f !important;
     font-size: 12px;
     font-weight: 750;
 }
 .vi-batch-value {
-    color: #111827 !important;
+    color: #172233 !important;
     font-size: 12px;
     font-weight: 800;
     text-align: right;
 }
 .vi-status-list li {
-    color: #374151 !important;
+    color: #314155 !important;
     margin-bottom: 8px;
     line-height: 1.45;
 }
 .vi-pill {
     display: inline-block;
-    color: #0f766e !important;
-    background: #ecfdf5;
-    border: 1px solid #bbf7d0;
+    color: #35685f !important;
+    background: #e8f3f0;
+    border: 1px solid #b8d8d0;
     border-radius: 6px;
     padding: 2px 7px;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     overflow-wrap: anywhere;
 }
 .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
-    background-color: #ffffff !important;
-    color: #1f2937 !important;
-    border-color: #cbd5e1 !important;
+    background-color: #fbfcfe !important;
+    color: #213040 !important;
+    border-color: #b9c7d6 !important;
     border-radius: 8px !important;
 }
 .stButton > button, .stDownloadButton > button, .stFormSubmitButton > button, .stLinkButton > a {
     border-radius: 8px !important;
-    border: 1px solid #1d4ed8 !important;
-    background: #2563eb !important;
+    border: 1px solid #254b77 !important;
+    background: linear-gradient(135deg, #315b8f 0%, #2f6f85 52%, #3f8f83 100%) !important;
     color: #ffffff !important;
     font-weight: 750 !important;
-    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.16) !important;
+    box-shadow: 0 8px 18px rgba(49, 91, 143, 0.18) !important;
     text-decoration: none !important;
 }
 .stButton > button[kind="secondary"] {
-    border-color: #cbd5e1 !important;
-    background: #ffffff !important;
-    color: #1f2937 !important;
+    border-color: #b9c7d6 !important;
+    background: #f8fafc !important;
+    color: #213040 !important;
     box-shadow: none !important;
 }
 .stButton > button:hover, .stDownloadButton > button:hover, .stFormSubmitButton > button:hover, .stLinkButton > a:hover {
-    border-color: #1e40af !important;
-    background: #1d4ed8 !important;
+    border-color: #203f64 !important;
+    background: linear-gradient(135deg, #284c78 0%, #2d6277 52%, #356f68 100%) !important;
 }
 .stFileUploader section {
-    background: #f8fafc !important;
-    border: 1px dashed #94a3b8 !important;
+    background:
+        linear-gradient(135deg, rgba(49, 91, 143, 0.06), rgba(63, 143, 131, 0.08)),
+        #f3f7f8 !important;
+    border: 1px dashed #7d9bb7 !important;
     border-radius: 8px !important;
 }
 [data-testid="stVerticalBlockBorderWrapper"] {
-    border-color: #d9dee7 !important;
-    background: #ffffff !important;
-    box-shadow: 0 8px 20px rgba(31, 41, 55, 0.05) !important;
+    border-color: #cfd8e3 !important;
+    background: #f8fafc !important;
+    box-shadow: 0 8px 20px rgba(33, 48, 64, 0.055) !important;
 }
 .stTabs [data-baseweb="tab-list"] {
     gap: 14px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #d9e1ea;
 }
 .stTabs [data-baseweb="tab"] p {
-    color: #5b6472 !important;
+    color: #66758a !important;
     font-weight: 700 !important;
 }
 .stTabs [aria-selected="true"] p {
-    color: #2563eb !important;
+    color: #315b8f !important;
 }
 .stAlert {
     border-radius: 8px !important;

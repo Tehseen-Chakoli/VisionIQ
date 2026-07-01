@@ -23,6 +23,8 @@ from src.components import (
 from src.config import APP_NAME, GROQ_KEYS_URL, MAX_IMAGES
 from src.database import get_groq_key, init_db, save_groq_key
 from src.encryption import decrypt, encrypt
+from src.groq_usage import GroqUsageTracker
+from src.usage_store import get_api_daily_usage, init_api_daily_usage_table
 
 
 def initialize_session_state() -> None:
@@ -34,13 +36,8 @@ def initialize_session_state() -> None:
         st.session_state.upload_widget_key = 0
     if "queued_file_names" not in st.session_state:
         st.session_state.queued_file_names = []
-    if "session_usage" not in st.session_state:
-        st.session_state.session_usage = {
-            "requests_last_minute": 0,
-            "tokens_last_minute": 0,
-            "session_requests": 0,
-            "tokens_today": 0,
-        }
+    if "groq_usage_tracker" not in st.session_state:
+        st.session_state.groq_usage_tracker = GroqUsageTracker()
 
 
 def run_app() -> None:
@@ -51,6 +48,7 @@ def run_app() -> None:
     # Database and session initialization happen before any page branch so every
     # screen can safely read auth state or account data.
     init_db()
+    init_api_daily_usage_table()
     init_auth_state()
     initialize_session_state()
 
@@ -129,7 +127,9 @@ def render_workspace(username: str, groq_api_key: str) -> None:
     with profile_col:
         render_profile_menu(username)
 
-    render_usage_dashboard(session_usage=st.session_state.session_usage)
+    daily_usage = get_api_daily_usage(groq_api_key)
+    usage_tracker: GroqUsageTracker = st.session_state.groq_usage_tracker
+    render_usage_dashboard(session_usage=usage_tracker.as_dashboard_usage(daily_tokens=daily_usage["tokens"]))
 
     st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
     upload_col, status_col = st.columns([1.65, 1.0], gap="large", vertical_alignment="top")

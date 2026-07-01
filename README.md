@@ -12,6 +12,10 @@ a clean, maintainable application structure:
 - `src/encryption.py` protects saved API keys.
 - `src/components.py` contains reusable Streamlit UI components and styling.
 - `src/ui.py` coordinates page flow.
+- `src/file_utils.py` manages temporary files for uploads and exports.
+- `src/usage_store.py` records local daily API usage.
+- `src/groq_usage.py` tracks session-level request and token usage.
+- `src/groq_service.py` sends prepared images to the extraction model.
 
 ## Development Status
 
@@ -22,9 +26,11 @@ The current implementation includes:
 - Encrypted API key storage
 - Authenticated workspace shell
 - Image upload staging interface
+- Session and daily usage dashboard models
+- Groq extraction service wrapper
 
 The extraction pipeline is planned as dedicated modules for image preparation,
-model requests, usage tracking, and PDF export.
+image processing, request orchestration, and PDF export.
 
 ## Run Locally
 
