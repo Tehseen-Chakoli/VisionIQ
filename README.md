@@ -2,7 +2,7 @@
 
 VisionIQ is a modular Streamlit workspace for extracting structured multiple-choice content from uploaded document images. The application is designed around a clean service-oriented layout, secure API-key handling, usage visibility, and a professional document-processing interface.
 
-VisionIQ is currently under active development. The current build includes the application shell, authentication, API-key storage, usage dashboard models, and the Groq extraction service layer. Image preprocessing, extraction orchestration, result review, and PDF export are planned as the next pipeline modules.
+VisionIQ is currently under active development. The current build includes authentication, encrypted API-key storage, a usage dashboard, image preparation, Groq-powered extraction, editable result review, and PDF export.
 
 ## Current Features
 
@@ -16,7 +16,11 @@ VisionIQ is currently under active development. The current build includes the a
 - Local daily API usage tracking
 - Session-level usage tracker
 - Groq extraction service wrapper
-- Temporary file utilities for future processing/export flow
+- Conservative document/screen crop preparation
+- JPEG optimization before model requests
+- Batch extraction orchestration
+- Editable extraction review area
+- Light and dark PDF export
 
 ## Interface
 
@@ -28,6 +32,8 @@ The UI uses a soft professional color palette with:
 - compact account controls
 - dashboard cards for usage visibility
 - two-column upload and batch summary layout
+- expandable result review sections
+- compact export controls
 
 ## Project Structure
 
@@ -44,9 +50,14 @@ VisionIQ/
     |-- config.py
     |-- database.py
     |-- encryption.py
+    |-- extraction_runner.py
     |-- file_utils.py
     |-- groq_service.py
     |-- groq_usage.py
+    |-- image_compressor.py
+    |-- image_processor.py
+    |-- pdf_service.py
+    |-- screen_cropper.py
     |-- ui.py
     `-- usage_store.py
 ```
@@ -59,22 +70,34 @@ VisionIQ/
 - `src/database.py` owns SQLite persistence for users, API keys, and token usage.
 - `src/encryption.py` encrypts and decrypts saved API keys.
 - `src/components.py` contains reusable Streamlit UI components and styling.
-- `src/ui.py` coordinates page flow, session state, API-key setup, upload staging, and dashboard rendering.
+- `src/ui.py` coordinates page flow, session state, API-key setup, extraction actions, and dashboard rendering.
 - `src/file_utils.py` manages temporary files for uploads and exports.
 - `src/usage_store.py` records local daily API usage by hashed API key.
 - `src/groq_usage.py` tracks session-level request and token usage and parses limit errors.
 - `src/groq_service.py` sends prepared images to the Groq extraction model.
+- `src/image_compressor.py` normalizes, resizes, and compresses images for model requests.
+- `src/screen_cropper.py` detects and crops the main document/screen region when it is safe to do so.
+- `src/image_processor.py` combines crop and compression steps for extraction-ready images.
+- `src/extraction_runner.py` coordinates uploaded files, preparation, model calls, usage persistence, and batch results.
+- `src/pdf_service.py` creates reviewed PDF exports from extraction results.
 
-## Planned Pipeline
+## Extraction Pipeline
 
-The next modules will connect the full extraction workflow:
+The current extraction flow is intentionally modular:
 
-- image compression and optimization
-- screen/document crop preparation
-- extraction runner for uploaded batches
-- editable result review
-- PDF export service
-- persisted extraction history
+1. Upload PNG or JPEG images.
+2. Prepare each image with conservative crop detection and JPEG optimization.
+3. Send the prepared image to the configured Groq Vision model.
+4. Record successful and failed request usage locally.
+5. Review and edit extracted text in the workspace.
+6. Export reviewed successful results to PDF.
+
+## Planned Improvements
+
+- Persist named extraction jobs
+- Add extraction history and re-export
+- Add optional prompt profiles
+- Add automated tests for image preparation and PDF export
 
 ## Run Locally
 
@@ -104,5 +127,5 @@ FERNET_KEY = "paste_generated_key_here"
 ## Notes
 
 - Local databases and secrets are ignored by git.
-- The current upload workflow stages files only; extraction orchestration will be connected in a later module.
-- The usage dashboard is wired to the session tracker and daily usage store so it is ready for live extraction calls.
+- The usage dashboard is wired to the session tracker and daily usage store for live extraction calls.
+- Review extracted text before using or sharing exported PDFs.

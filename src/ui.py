@@ -14,8 +14,10 @@ from src.components import (
     render_app_header,
     render_hero,
     render_login_page,
+    render_pdf_export_controls,
     render_pipeline_notice,
     render_profile_menu,
+    render_results_editor,
     render_section_card,
     render_usage_dashboard,
     render_batch_summary_panel,
@@ -23,7 +25,11 @@ from src.components import (
 from src.config import APP_NAME, GROQ_KEYS_URL, MAX_IMAGES
 from src.database import get_groq_key, init_db, save_groq_key
 from src.encryption import decrypt, encrypt
+from src.extraction_runner import run_extraction_batch
+from src.file_utils import get_temp_pdf_path
 from src.groq_usage import GroqUsageTracker
+from src.image_processor import ImagePrepConfig
+from src.pdf_service import create_extraction_pdf
 from src.usage_store import get_api_daily_usage, init_api_daily_usage_table
 
 
@@ -38,6 +44,8 @@ def initialize_session_state() -> None:
         st.session_state.queued_file_names = []
     if "groq_usage_tracker" not in st.session_state:
         st.session_state.groq_usage_tracker = GroqUsageTracker()
+    if "extraction_results" not in st.session_state:
+        st.session_state.extraction_results = []
 
 
 def run_app() -> None:
@@ -127,15 +135,19 @@ def render_workspace(username: str, groq_api_key: str) -> None:
     with profile_col:
         render_profile_menu(username)
 
-    daily_usage = get_api_daily_usage(groq_api_key)
-    usage_tracker: GroqUsageTracker = st.session_state.groq_usage_tracker
-    render_usage_dashboard(session_usage=usage_tracker.as_dashboard_usage(daily_tokens=daily_usage["tokens"]))
+    usage_placeholder = st.empty()
+    refresh_usage_dashboard(groq_api_key=groq_api_key, usage_placeholder=usage_placeholder)
 
     st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
     upload_col, status_col = st.columns([1.65, 1.0], gap="large", vertical_alignment="top")
 
     with upload_col:
-        render_upload_shell(groq_api_key=groq_api_key, upload_key=upload_key)
+        render_upload_shell(
+            username=username,
+            groq_api_key=groq_api_key,
+            upload_key=upload_key,
+            usage_placeholder=usage_placeholder,
+        )
 
     with status_col:
         render_batch_summary_panel(
@@ -145,6 +157,16 @@ def render_workspace(username: str, groq_api_key: str) -> None:
         )
 
     render_pipeline_notice()
+    render_results_and_export()
+
+
+def refresh_usage_dashboard(groq_api_key: str, usage_placeholder) -> None:
+    """Render the quota dashboard from local daily and session usage data."""
+
+    daily_usage = get_api_daily_usage(groq_api_key)
+    usage_tracker: GroqUsageTracker = st.session_state.groq_usage_tracker
+    with usage_placeholder.container():
+        render_usage_dashboard(session_usage=usage_tracker.as_dashboard_usage(daily_tokens=daily_usage["tokens"]))
 
 
 def get_upload_widget_key() -> str:
@@ -162,16 +184,16 @@ def get_current_upload_count(upload_key: str) -> int:
     return len(st.session_state.queued_file_names)
 
 
-def render_upload_shell(groq_api_key: str, upload_key: str) -> None:
+def render_upload_shell(username: str, groq_api_key: str, upload_key: str, usage_placeholder) -> None:
     """Render upload controls for the workspace shell.
 
-    The current workspace queues files only. Processing modules will later
-    consume these uploaded files for preparation, extraction, and export.
+    Uploaded files are staged in Streamlit state, then passed to the extraction
+    runner when the user starts the batch.
     """
 
     render_section_card(
         "Upload Source Images",
-        "Upload up to 30 PNG or JPEG images. Processing modules will use these files for extraction and export.",
+        "Upload up to 30 PNG or JPEG images. VisionIQ will prepare, extract, and organize them into reviewed results.",
     )
 
     uploaded_files = st.file_uploader(
@@ -191,7 +213,7 @@ def render_upload_shell(groq_api_key: str, upload_key: str) -> None:
     st.markdown(
         """
 <div class="vi-action-strip">
-    <div class="vi-action-copy">Files are staged locally until extraction modules are connected.</div>
+    <div class="vi-action-copy">Files are processed one at a time so usage tracking and errors stay transparent.</div>
 </div>
         """,
         unsafe_allow_html=True,
@@ -199,17 +221,67 @@ def render_upload_shell(groq_api_key: str, upload_key: str) -> None:
     action_col, clear_col, _ = st.columns([1.0, 0.9, 2.8], gap="medium")
     with action_col:
         if st.button("Start Extraction", type="primary", use_container_width=True):
-            st.info("Extraction is not connected yet. The processing pipeline will be added as dedicated modules.")
+            if not uploaded_files:
+                st.warning("Select at least one image before starting extraction.")
+            elif uploaded_count > MAX_IMAGES:
+                st.error(f"Upload no more than {MAX_IMAGES} images at a time.")
+            else:
+                run_extraction_batch(
+                    uploaded_files=uploaded_files,
+                    username=username,
+                    groq_api_key=groq_api_key,
+                    prep_config=ImagePrepConfig(),
+                    usage_refresh=lambda: refresh_usage_dashboard(groq_api_key, usage_placeholder),
+                )
 
     with clear_col:
         if st.button("Clear Uploads", use_container_width=True):
             st.session_state.upload_widget_key += 1
             st.session_state.queued_file_names = []
+            st.session_state.extraction_results = []
             st.rerun()
 
     if st.session_state.queued_file_names:
         st.caption("Queued files: " + ", ".join(st.session_state.queued_file_names))
 
-    # This keeps the authenticated API key available for the processing pipeline
-    # once extraction modules are connected.
     _ = groq_api_key
+
+
+def render_results_and_export() -> None:
+    """Render editable extraction results and create PDF exports on demand."""
+
+    results = st.session_state.get("extraction_results", [])
+    if not results:
+        return
+
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+    st.session_state.extraction_results = render_results_editor(results)
+    pdf_name, theme, export_clicked = render_pdf_export_controls()
+
+    if export_clicked:
+        successful_results = [
+            result
+            for result in st.session_state.extraction_results
+            if str(result.get("status", "success")) == "success" and str(result.get("output", "")).strip()
+        ]
+
+        if not successful_results:
+            st.warning("There is no reviewed extraction text to export yet.")
+            return
+
+        pdf_path = get_temp_pdf_path(pdf_name)
+        create_extraction_pdf(
+            results=successful_results,
+            output_path=pdf_path,
+            title=pdf_name,
+            theme=theme,
+        )
+
+        with open(pdf_path, "rb") as pdf_file:
+            st.download_button(
+                "Download PDF",
+                data=pdf_file,
+                file_name=f"{pdf_name.strip() or 'VisionIQ_Export'}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )

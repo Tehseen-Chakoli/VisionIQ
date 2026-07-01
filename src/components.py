@@ -10,7 +10,7 @@ from __future__ import annotations
 import streamlit as st
 
 from src.auth import login_user, logout, register_user
-from src.config import APP_NAME, APP_TAGLINE, GROQ_KEYS_URL, RPD_LIMIT, RPM_LIMIT, TPD_LIMIT, TPM_LIMIT
+from src.config import APP_NAME, APP_TAGLINE, DEFAULT_PDF_NAME, GROQ_KEYS_URL, PDF_THEMES, RPD_LIMIT, RPM_LIMIT, TPD_LIMIT, TPM_LIMIT
 from src.database import get_user_token_summary
 
 
@@ -321,6 +321,20 @@ a { color: #315b8f !important; }
     color: #314155 !important;
     margin-bottom: 8px;
     line-height: 1.45;
+}
+.vi-result-meta {
+    color: #66758a !important;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+.vi-result-ok {
+    color: #35685f !important;
+    font-weight: 800;
+}
+.vi-result-error {
+    color: #9a3d3d !important;
+    font-weight: 800;
 }
 .vi-pill {
     display: inline-block;
@@ -650,9 +664,70 @@ def render_batch_summary_panel(username: str, queued_count: int, queued_file_nam
 
 
 def render_pipeline_notice() -> None:
-    """Explain that document processing modules are not connected yet."""
+    """Render a concise note for the connected processing workflow."""
 
     st.info(
-        "Document processing modules are being prepared. Image cleanup, extraction, "
-        "usage tracking, and PDF export will be connected as separate services."
+        "Image cleanup, extraction, usage tracking, review, and PDF export are connected as separate services."
     )
+
+
+def render_results_editor(results: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Render editable extraction results and return the updated list."""
+
+    if not results:
+        return []
+
+    render_section_card(
+        "Review Extracted Text",
+        "Check each image result, correct any OCR issues, and export only the reviewed text.",
+    )
+
+    updated_results: list[dict[str, object]] = []
+    for index, result in enumerate(results):
+        edited_result = dict(result)
+        file_name = str(edited_result.get("file_name", f"Image {index + 1}"))
+        status = str(edited_result.get("status", "success"))
+        status_class = "vi-result-ok" if status == "success" else "vi-result-error"
+        status_label = "Ready" if status == "success" else "Needs attention"
+
+        with st.expander(f"{index + 1}. {file_name}", expanded=index == 0):
+            st.markdown(
+                f"""
+<div class="vi-result-meta">
+    Status: <span class="{status_class}">{status_label}</span><br>
+    Tokens: {_format_number(int(edited_result.get("total_tokens", 0) or 0))} |
+    Duration: {float(edited_result.get("duration_seconds", 0) or 0):.2f}s |
+    Final image: {edited_result.get("final_size", (0, 0))}
+</div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            if status != "success":
+                st.warning(str(edited_result.get("error_message", "This image could not be extracted.")))
+
+            edited_result["output"] = st.text_area(
+                "Extracted text",
+                value=str(edited_result.get("output", "")),
+                height=260,
+                key=f"visioniq_result_text_{index}",
+            )
+            updated_results.append(edited_result)
+
+    return updated_results
+
+
+def render_pdf_export_controls() -> tuple[str, str, bool]:
+    """Render PDF export options and return the selected values."""
+
+    with st.container(border=True):
+        st.markdown("### Export")
+        name_col, theme_col, button_col = st.columns([1.5, 0.8, 0.8], gap="medium", vertical_alignment="bottom")
+        with name_col:
+            pdf_name = st.text_input("PDF file name", value=DEFAULT_PDF_NAME)
+        with theme_col:
+            theme = st.selectbox("Theme", PDF_THEMES)
+        with button_col:
+            export_clicked = st.button("Generate PDF", type="primary", use_container_width=True)
+
+    return pdf_name, theme, export_clicked

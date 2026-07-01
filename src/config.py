@@ -30,6 +30,12 @@ MODEL_NAME = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 MAX_IMAGES = 30
 DELAY_SECONDS = 3
+MAX_COMPLETION_TOKENS = 2048
+
+# Image preparation defaults are tuned for model readability while keeping
+# request payloads reasonably small for batch extraction.
+IMAGE_TARGET_WIDTH = 1400
+IMAGE_JPEG_QUALITY = 88
 
 # Default Groq on-demand limits used for the UI usage monitor. Keeping them in
 # config makes the dashboard easy to update if account limits change.
